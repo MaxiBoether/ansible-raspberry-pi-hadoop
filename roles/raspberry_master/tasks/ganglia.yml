@@ -1,0 +1,77 @@
+- name: install ganglia
+  apt: 
+    name: 
+    - ganglia-monitor 
+    - rrdtool 
+    - gmetad 
+    - ganglia-webfrontend
+  become: yes
+
+- name: create vhost
+  copy:
+    src: /etc/ganglia-webfrontend/apache.conf
+    dest: /etc/apache2/sites-enabled/ganglia.conf
+    remote_src: true
+  become: yes
+
+- name: replace data_source in gmetad
+  lineinfile: 
+    dest: /etc/ganglia/gmetad.conf
+    regexp: '^(.*)data_source(.*)$' 
+    line: 'data_source "CluPi" localhost' 
+    backrefs: yes
+    backup: yes
+  become: yes
+  
+- name: replace gmond.conf
+  copy:
+    src: /opt/admintools/etc/ganglia/gmond.conf
+    dest: /etc/ganglia/gmond.conf
+    owner: root
+    mode: '0644'
+    remote_src: true
+    backup: true
+  become: yes
+
+- name: replace clustername in gmond.conf
+  replace: 
+    dest: /etc/ganglia/gmond.conf
+    regexp: '^(.*)clustername(.*)$' 
+    replace: 'name = "CluPi"'
+  become: yes
+
+- name: replace masterip in gmond.conf
+  replace: 
+    dest: /etc/ganglia/gmond.conf
+    regexp: '^(.*)masterip(.*)$' 
+    replace: 'host = node01'
+  become: yes
+  
+- name: enable ganglia-monitor
+  systemd:
+    name: ganglia-monitor
+    enabled: yes
+  become: yes
+
+- name: enable gmetad
+  systemd:
+    name: gmetad
+    enabled: yes
+  become: yes
+
+- name: restart ganglia-monitor
+  service:
+    name: ganglia-monitor
+    state: restarted
+  become: yes
+
+- name: restart gmetad
+  service:
+    name: gmetad
+    state: restarted
+  become: yes
+- name: restart apache
+  service:
+    name: apache2
+    state: restarted
+  become: yes

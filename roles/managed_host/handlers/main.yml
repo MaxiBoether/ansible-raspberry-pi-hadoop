@@ -1,0 +1,31 @@
+# This does not actually restart SSHd but tests its configuration and
+# notifies the actual restart handler.
+# Once https://github.com/ansible/ansible/issues/14270 is resolved,
+# this can be done properly using a block.
+# Also remember: handler are run in the order **listed** (¬ notified)
+
+- name: restart sshd
+  service: name=ssh state=restarted
+
+- name: restart postfix
+  service: name=postfix state=restarted
+
+- name: restart opendkim
+  service: name=opendkim state=restarted
+  when: postfix_dkim_keys
+
+- name: reload systemd daemon
+  command: systemctl daemon-reload
+  when: ansible_service_mgr == "systemd"
+
+- name: rehash aliases
+  command: postalias /etc/aliases
+
+- name: restart apache2
+  shell: /usr/bin/apache2ctl configtest && /usr/bin/apache2ctl restart
+
+- name: restart nginx
+  service: name=nginx state=restarted
+
+- name: restart mysqld
+  service: name=mysql state=restarted

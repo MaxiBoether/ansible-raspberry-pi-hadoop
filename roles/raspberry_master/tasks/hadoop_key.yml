@@ -1,0 +1,36 @@
+
+- name: Upload SSH Key to master (hadoop user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}"
+    dest: "/home/hadoop/.ssh/id_rsa"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: 0600
+  become: yes
+
+- name: Upload SSH priv Key to master (hadoop user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}.pub"
+    dest: "/home/hadoop/.ssh/id_rsa.pub"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: 0600
+  become: yes
+
+- name: Upload SSH Key to master (root user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}"
+    dest: "/root/.ssh/id_rsa"
+    owner: "root"
+    group: "root"
+    mode: 0600
+  become: yes
+
+- name: Upload SSH pub Key to master (root user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}.pub"
+    dest: "/root/.ssh/id_rsa.pub"
+    owner: "root"
+    group: "root"
+    mode: 0600
+  become: yes

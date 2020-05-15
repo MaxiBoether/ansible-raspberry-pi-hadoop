@@ -1,0 +1,423 @@
+- name: ensure tar is present
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - tar
+    - unzip
+    - openssh-client
+    - bc
+  become: yes
+
+- name: Create service account for HDFS
+  user:
+    name: "{{ hadoop.user }}"
+    system: yes
+    shell: "{{ hadoop.user_shell }}"
+    state: present
+
+- name: Disable IPV6
+  sysctl:
+    name: "{{ item }}"
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+    - "net.ipv6.conf.all.disable_ipv6"
+    - "net.ipv6.conf.default.disable_ipv6"
+    - "net.ipv6.conf.lo.disable_ipv6"
+
+- name: Add ssh key to authorized keys (hadoop)
+  authorized_key:
+    user: "{{ hadoop.user }}"
+    state: present
+    key: "{{ lookup('file', raspiconfig.ssh_key_filename+'.pub') }}"
+
+# currently not working
+#- name: Add host keys
+#  known_hosts:
+#    name: "{{ item }}"
+#    key: "{{ lookup('pipe', 'ssh-keyscan {{ item }},`dig +short {{ item }}`') }}"
+#  become: yes
+#  become_user: "{{ hadoop.user }}"
+#  with_items: "{{ hadoop.default_hosts + groups|selectattr('master','defined')|list + groups|selectattr('cluster','defined')|list }}"
+
+- name: Set number of nodes
+  set_fact:
+    number_of_nodes: "{{ groups|selectattr('master','defined')|list|length|default(0) +
+    groups|selectattr('cluster','defined')|list|length|default(0) }}"
+
+- name: hdfs_replication_factor
+  set_fact:
+    hdfs_replication_factor: "{{ hadoop.replication_factor }}"
+
+- name: remove pre-existent hadoop data directory
+  file:
+    path: "{{ hadoop.data_dir }}/"
+    state: absent
+
+- name: create hadoop data directory
+  file:
+    path: "{{ hadoop.data_dir }}"
+    state: directory
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+  become: true
+
+- name: remove pre-existent hadoop name directory
+  file:
+    path: "{{ hadoop.name_dir }}/"
+    state: absent
+
+- name: create hadoop name directory
+  file:
+    path: "{{ hadoop.name_dir }}"
+    state: directory
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+  become: true
+
+- name: remove pre-existent hadoop temp directory
+  file:
+    path: "{{ hadoop.temp_dir }}/"
+    state: absent
+
+- name: create hadoop temp directory
+  file:
+    path: "{{ hadoop.temp_dir }}"
+    state: directory
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+  become: true
+
+- name: create install temp directory
+  file:
+    path: "{{ install_temp_dir }}"
+    state: directory
+
+- name: create install directory
+  file:
+    path: "{{ hadoop_install_dir }}"
+    state: directory
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+  become: true
+
+- name: download hadoop
+  get_url:
+    url: "{{ hadoop.download_location }}/hadoop-{{ hadoop.version }}/{{ hadoop.hadoop_archive }}"
+    dest: "/tmp/{{ hadoop.hadoop_archive }}"
+
+- name: unarchive to the install directory
+  unarchive:
+    src: "/tmp/{{ hadoop.hadoop_archive }}"
+    dest: "{{ hadoop_install_dir }}"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+
+- name: Set java_home
+  set_fact:
+    java_home: /usr/lib/jvm/java-8-openjdk-armhf/jre
+  when: java_home is not defined
+
+- name: set core-site.xml
+  template:
+    src: "core-site.xml.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/core-site.xml"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+
+- name: set hadoop-env.sh
+  template:
+    src: "hadoop-env.sh.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/hadoop-env.sh"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+
+- name: set hdfs-site.xml
+  template:
+    src: "hdfs-site.xml.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/hdfs-site.xml"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+
+- name: set mapred-site.xml
+  template:
+    src: "mapred-site.xml.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/mapred-site.xml"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+
+
+- name: set yarn-site.xml
+  template:
+    src: "yarn-site.xml.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/yarn-site.xml"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+
+- name: set workers
+  template:
+    src: "workers.j2"
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/workers"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+  become: yes
+
+- name: set hadoop to path .bashrc of pi (1/2)
+  lineinfile:
+    path: /home/pi/.bashrc
+    line: export HADOOP_HOME=/home/hadoop/hadoop
+    create: yes
+  become: pi
+
+- name: set hadoop to path .bashrc of pi (2/2)
+  lineinfile:
+    path: /home/pi/.bashrc
+    line: export PATH=${PATH}:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin
+    create: yes
+  become: pi
+
+- name: set hadoop to path .bashrc of root (1/2)
+  lineinfile:
+    path: ~/.bashrc
+    line: export HADOOP_HOME=/home/hadoop/hadoop
+    create: yes
+  become: root
+
+- name: set hadoop to path .bashrc of root (2/2)
+  lineinfile:
+    path: ~/.bashrc
+    line: export PATH=${PATH}:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin
+    create: yes
+  become: root
+
+- name: set hadoop zshrc (1/2)
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export HADOOP_HOME=/home/hadoop/hadoop
+    create: yes
+  become: yes
+
+- name: set hadoop zshrc (/2)
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export PATH=${PATH}:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin
+    create: yes
+  become: yes
+
+- name: add hadoop profile to startup
+  template:
+    src: hadoop-profile.sh.j2
+    dest: /etc/profile.d/hadoop-profile.sh
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+    mode: 0644
+
+- name: create start script
+  template:
+    src: start-hadoop.sh.j2
+    dest: "/home/{{ hadoop.user }}/start-hadoop.sh"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+    mode: 0644
+  become: yes
+  become_user: root
+
+- name: make it executable
+  file:
+    dest: "/home/{{ hadoop.user }}/start-hadoop.sh"
+    mode: a+x
+  become: yes
+  become_user: root
+
+- name: create stop script
+  template:
+    src: stop-hadoop.sh.j2
+    dest: "/home/{{ hadoop.user }}/stop-hadoop.sh"
+    owner: "{{ hadoop.user }}"
+    group: "{{ hadoop.user }}"
+    mode: 0644
+  become: yes
+  become_user: root
+
+- name: make it executable
+  file:
+    dest: "/home/{{ hadoop.user }}/stop-hadoop.sh"
+    mode: a+x
+  become: yes
+  become_user: root
+
+- name: increase max file limit (3/3)
+  sysctl:
+    name: fs.file-max
+    value: '65535'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  become: yes
+
+- name: increase max file limit (2/3)
+  blockinfile:
+    path: /etc/security/limits.conf
+    block: |
+      * soft     nproc          65535
+      * hard     nproc          65535
+      * soft     nofile         65535
+      * hard     nofile         65535
+      root soft     nproc          65535
+      root hard     nproc          65535
+      root soft     nofile         65535
+      root hard     nofile         65535
+
+- name: increase max file limit (3/3)
+  lineinfile:
+    path: /etc/pam.d/common-session
+    line: session required pam_limits.so
+
+- name: set swappiness
+  sysctl:
+    name: vm.swappiness
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: delete old native bindings
+  file:
+    state: absent
+    path: "{{ hadoop_install_dir }}/lib/native"
+
+- name: copy new native files
+  copy:
+    src: native
+    dest: "{{ hadoop_install_dir }}/lib"
+    owner: hadoop
+    group: hadoop
+    mode: '0755'
+
+- name: Upload SSH Key (hadoop user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}"
+    dest: "/home/hadoop/.ssh/id_rsa"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: 0600
+  become: yes
+
+- name: Upload SSH priv Key (hadoop user)
+  copy:
+    src: "{{ raspiconfig.ssh_key_filename }}.pub"
+    dest: "/home/hadoop/.ssh/id_rsa.pub"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: 0600
+  become: yes
+
+- name: format namenode
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hdfs namenode -format
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: start dfs for a moment
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && start-dfs.sh
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: create tmp dir
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -mkdir /tmp
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: set tmp dir permissions
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -chmod -R 1777 /tmp
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: create history dir
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -mkdir -p /user/history
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: set history dir permissions
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -chmod -R 1777 /user/history
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: chown history dir
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -chown hadoop:hadoop /user/history
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: create log dir
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -mkdir -p /var/log/hadoop-yarn
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: chown log dir
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -chown hadoop:hadoop /var/log/hadoop-yarn
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: create hadoop user directory
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -mkdir /user/hadoop
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: create root user directory
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -mkdir /user/root
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: chown root user directory
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && hadoop fs -chown root /user/root
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"
+
+- name: stop dfs
+  shell: source /etc/zsh/zshrc && source /etc/profile.d/hadoop-profile.sh && stop-dfs.sh
+  args:
+     executable: /bin/zsh
+  become: yes
+  become_user: "{{ hadoop.user }}"
+  when: "'master' in group_names"

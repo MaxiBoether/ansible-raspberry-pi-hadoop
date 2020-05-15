@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+            <name>mapreduce.framework.name</name>
+            <value>yarn</value>
+    </property>
+        <property>
+        <name>yarn.app.mapreduce.am.staging-dir</name>
+        <value>/user</value>
+        </property>
+    <property>
+            <name>yarn.app.mapreduce.am.env</name>
+            <value>HADOOP_MAPRED_HOME=$HADOOP_HOME</value>
+    </property>
+    <property>
+            <name>mapreduce.map.env</name>
+            <value>HADOOP_MAPRED_HOME=$HADOOP_HOME</value>
+    </property>
+    <property>
+            <name>mapreduce.reduce.env</name>
+            <value>HADOOP_MAPRED_HOME=$HADOOP_HOME</value>
+    </property>
+
+    <property>
+        <name>yarn.app.mapreduce.am.resource.mb</name>
+        <value>{{ yarnammemory }}</value>
+    </property>
+
+    <property>
+            <name>mapreduce.map.memory.mb</name>
+            <value>{{ yarnmrmemory }}</value>
+    </property>
+
+    <property>
+            <name>mapreduce.reduce.memory.mb</name>
+            <value>{{ yarnmrmemory }}</value>
+    </property>
+
+    <property>
+            <name>mapreduce.job.heap.memory-mb.ratio</name>
+            <value>{{ yarnmrheapratio }}</value>
+    </property>
+    
+        <property>
+                <name>mapreduce.jobhistory.bind-host</name>
+                <value>0.0.0.0</value>
+        </property>
+        <property>
+                <name>mapreduce.jobhistory.address</name>
+                <value>node01:10020</value>
+        </property>
+        <property>
+                <name>mapreduce.jobhistory.webapp.address</name>
+                <value>node01:19888</value>
+        </property>
+</configuration>

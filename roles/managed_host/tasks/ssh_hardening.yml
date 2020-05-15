@@ -1,0 +1,105 @@
+# inspired by
+# - https://stribika.github.io/2015/01/04/secure-secure-shell.html
+# - https://github.com/dev-sec/ansible-ssh-hardening
+
+- name: add comment that this file is managed by ansible
+  blockinfile:
+    dest: "{{ item }}"
+    insertbefore: BOF
+    block: |
+      # provisioned by
+      # https://github.com/lpirl/ansible-roles/blob/master/roles/managed_host/tasks/ssh_hardening.yml
+      # (only options are set but the file won't be completely overwritten)
+  with_items:
+    - /etc/ssh/sshd_config
+    - /etc/ssh/ssh_config
+
+
+
+# ---------- BEGIN: version checks ----------
+
+- name: check if SSH version is at least 6.7
+  shell: 'T="OpenSSH_6.7";
+    [ "`echo "$T\n$(ssh -V 2>&1 | cut -d, -f1)" | sort | head -n1`" = "$T" ]'
+  changed_when: false
+
+# ----------   END: version checks ----------
+
+
+# ---------- BEGIN: version-independent configuration ----------
+
+- name: normalize configuration file to use spaces instead of tabs between
+        configuration keys consisting of more than one word
+  replace:
+    dest: "{{ item }}"
+    regexp: '(.+)\t+(.+)'
+    replace: '\1 \2'
+  with_items:
+    - /etc/ssh/sshd_config
+    - /etc/ssh/ssh_config
+
+- name: remove problematically formatted default SSH option
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^Subsystem\t"
+              state=absent
+
+- name: set SSH options for server
+  lineinfile: dest="/etc/ssh/sshd_config"
+              line="{{ item.key }} {{ item.value }}"
+              regexp="^(#\s?)?{{ item.key|regex_escape }}\s.*"
+              insertbefore="^Match\s.*"
+  with_dict: "{{
+    {} |
+    combine(ssh_client_and_server_options) |
+    combine(ssh_client_and_server_extra_options | default({})) |
+    combine(ssh_server_options) |
+    combine(ssh_server_extra_options | default({}))
+  }}"
+  notify: restart sshd
+
+- name: set SSH options for client
+  lineinfile: dest="/etc/ssh/ssh_config"
+              line="{{ item.key }} {{ item.value }}"
+              regexp="^(#\s?)?{{ item.key|regex_escape }}\s.*"
+              insertbefore="^Match\s.*"
+  with_dict: "{{
+    {} |
+    combine(ssh_client_and_server_options) |
+    combine(ssh_client_and_server_extra_options | default({})) |
+    combine(ssh_client_options) |
+    combine(ssh_client_extra_options | default({}))
+  }}"
+
+- name: unset deprecated options
+  lineinfile: dest="/etc/ssh/{{ item[0] }}_config"
+              regexp="^(#\s?)?{{ item[1]|regex_escape }}\s.*"
+              state=absent
+  with_nested:
+    - [ssh, sshd]
+    - "{{ ssh_client_and_server_deprecated_options }}"
+
+
+
+# ---------- END:   version-independent configuration ----------
+
+
+
+# ---------- BEGIN: files and permissions ----------
+- name: enforce permissions for .ssh directory of {{ ansible_user_id }}
+  file: dest="{{ansible_user_dir}}/.ssh" mode=u+rX,go-rwx
+        state=directory recurse=yes
+
+- name: get home directory of
+        {{ ansible_env.SUDO_USER|default("[n.a.]") }}
+  register: sudo_user_home
+  shell: echo ~${SUDO_USER}
+  when: ansible_env.SUDO_USER is defined
+  changed_when: false
+
+- name: enforce permissions for .ssh directory of
+        {{ ansible_env.SUDO_USER|default("[n.a.]") }}
+  file: dest="{{sudo_user_home.stdout}}/.ssh" mode=u+rX,go-rwx
+        state=directory recurse=yes
+  when: ansible_env.SUDO_USER is defined
+
+# ---------- END:   files and permissions ----------

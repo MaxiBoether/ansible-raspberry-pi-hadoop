@@ -1,0 +1,9 @@
+- name: Add the inventory into /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*{{ item }}$'
+    line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['piname']}}"
+    state: present
+  when: hostvars[item]['ansible_facts']['default_ipv4'] is defined
+  with_items:
+    - "{{ groups['all'] }}"

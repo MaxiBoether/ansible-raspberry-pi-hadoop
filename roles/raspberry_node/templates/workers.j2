@@ -1,0 +1,3 @@
+{% for host in groups['cluster'] %}
+{{ hostvars[host]['piname'] }}
+{% endfor %}

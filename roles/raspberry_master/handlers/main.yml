@@ -1,0 +1,11 @@
+---
+- name: save iptables v4 rules
+  shell: sudo sh -c 'iptables-save > /etc/iptables/rules.v4'
+  listen: persist iptables
+
+- name: save iptables v6 rules
+  shell: sudo sh -c 'ip6tables-save > /etc/iptables/rules.v6'
+  listen: persist iptables
+
+- name: restart apache2
+  shell: /usr/sbin/apache2ctl configtest && /usr/sbin/apache2ctl restart

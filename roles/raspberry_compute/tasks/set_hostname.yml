@@ -1,0 +1,17 @@
+- name: set pi's hostname
+  hostname:
+    name: "{{ piname }}"
+
+- name: replace raspberrypi in /etc/hosts
+  become: yes
+  replace:
+    path: /etc/hosts
+    regexp: '(\s+)raspberrypi(\s+.*)?$'
+    replace: '\1 {{ piname }} \2'
+
+- name: remove hostname mapping to local ips
+  become: yes
+  lineinfile:
+    path: /etc/hosts
+    state: absent
+    regexp: '^(127\.0\.0\.1|127\.0\.1\.1).+({{ piname }})'

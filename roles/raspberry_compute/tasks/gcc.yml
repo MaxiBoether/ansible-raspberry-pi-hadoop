@@ -1,0 +1,184 @@
+- name: Install prerequisites
+  apt:
+    pkg:
+      - build-essential
+      - gawk 
+      - gcc 
+      - g++ 
+      - gfortran 
+      - git 
+      - texinfo 
+      - bison
+      - wget 
+      - bzip2 
+      - libncurses-dev 
+      - libssl-dev 
+      - openssl 
+      - zlib1g-dev
+  become: yes
+
+- name: download gcc9.2.0
+  get_url:
+    url: "https://iweb.dl.sourceforge.net/project/raspberry-pi-cross-compilers/Raspberry%20Pi%20GCC%20Native-Compiler%20Toolchains/Buster/GCC%209.2.0/Raspberry%20Pi%203A%2B%2C%203B%2B%2C%204/native-gcc-9.2.0-pi_3%2B.tar.gz"
+    dest: "/tmp/native-gcc.tar.gz"
+  become: yes
+
+- name: remove pre-existent gcc directory to prevent issues when re-running
+  file:
+    path: "/opt/gcc9.2/"
+    state: absent
+  become: yes
+
+- name: create gcc directory
+  file:
+    path: "/opt/gcc9.2"
+    state: directory
+    owner: "pi"
+  become: yes
+
+- name: unarchive
+  unarchive:
+    src: "/tmp/native-gcc.tar.gz"
+    dest: "/opt/gcc9.2"
+    owner: "pi"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+  become: yes
+
+- name: remove tar file
+  file:
+    path: "/tmp/native-gcc.tar.gz"
+    state: absent
+  become: yes
+
+- name: change permissions
+  file:
+    path: /opt/gcc9.2
+    state: directory
+    recurse: yes
+    mode: '0755'
+  become: yes
+
+- name: append it to .bashrc of pi (1/2)
+  lineinfile:
+    path: /home/pi/.bashrc
+    line: export PATH=/opt/gcc9.2/bin:$PATH
+    create: yes
+  become: pi
+
+- name: set gcc to path .bashrc of pi (2/2)
+  lineinfile:
+    path: /home/pi/.bashrc
+    line:  export LD_LIBRARY_PATH=/opt/gcc9.2/lib:$LD_LIBRARY_PATH
+    create: yes
+  become: pi
+
+- name: append it to .bashrc of root (1/2)
+  lineinfile:
+    path: ~/.bashrc
+    line: export PATH=/opt/gcc9.2/bin:$PATH
+    create: yes
+  become: root
+
+- name: set gcc to path .bashrc of root (2/2)
+  lineinfile:
+    path: ~/.bashrc
+    line: export LD_LIBRARY_PATH=/opt/gcc9.2/lib:$LD_LIBRARY_PATH
+    create: yes
+  become: root
+
+- name: set gcc9.2 zshrc (1/2)
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export PATH=/opt/gcc9.2/bin:$PATH
+    create: yes
+  become: yes
+
+- name: set gcc9.2 zshrc (2/2)
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export LD_LIBRARY_PATH=/opt/gcc9.2/lib:$LD_LIBRARY_PATH
+    create: yes
+  become: yes
+
+- name: create asm directory
+  file:
+    path: "/usr/include/asm"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: create gnu directory
+  file:
+    path: "/usr/include/gnu"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: create sys directory
+  file:
+    path: "/usr/include/sys"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: create bits directory
+  file:
+    path: "/usr/include/bits"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: create openssl directory
+  file:
+    path: "/usr/include/openssl"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: symlink1 - using shell instead of file because ansible does not support the * syntax
+  shell:
+    cmd: ln -sf /usr/include/arm-linux-gnueabihf/asm/* /usr/include/asm
+  become: yes
+
+- name: symlink2 - using shell instead of file because ansible does not support the * syntax
+  shell:
+    cmd: ln -sf /usr/include/arm-linux-gnueabihf/gnu/* /usr/include/gnu
+  become: yes
+
+- name: symlink3 - using shell instead of file because ansible does not support the * syntax
+  shell:
+    cmd: ln -sf /usr/include/arm-linux-gnueabihf/sys/* /usr/include/sys
+  become: yes
+
+- name: symlink4 - using shell instead of file because ansible does not support the * syntax
+  shell:
+    cmd: ln -sf /usr/include/arm-linux-gnueabihf/bits/* /usr/include/bits
+  become: yes
+
+- name: symlink5 - using shell instead of file because ansible does not support the * syntax
+  shell:
+    cmd: ln -sf /usr/include/arm-linux-gnueabihf/openssl/* /usr/include/openssl
+  become: yes
+
+- name: symlink6
+  file:
+    src: "/usr/lib/arm-linux-gnueabihf/crtn.o"
+    dest: "/usr/lib/crtn.o"
+    state: link
+  become: yes
+
+- name: symlink7
+  file:
+    src: "/usr/lib/arm-linux-gnueabihf/crt1.o"
+    dest: "/usr/lib/crt1.o"
+    state: link
+  become: yes
+
+- name: symlink8
+  file:
+    src: "/usr/lib/arm-linux-gnueabihf/crti.o"
+    dest: "/usr/lib/crti.o"
+    state: link
+  become: yes

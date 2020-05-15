@@ -1,0 +1,41 @@
+configure_rsync_backup: True
+rsync_backup_script: /etc/cron.daily/999-rsync-backup
+rsync_backup_remote_host: example.com
+rsync_backup_remote_port: 22
+rsync_backup_remote_user: "{{ ansible_hostname }}"
+rsync_backup_dir_pairs:
+  - { local_dir: "/", remote_dir: "/backup"}
+rsync_backup_wait_for_args_extra: ""
+
+arpwatch_enabled: yes
+use_process_accounting: yes
+
+needs_usb_storage: no
+needs_firewire_storage: no
+
+use_watchdog: yes
+watchdog_extra_options: {} # use this variable to override settings
+watchdog_global_options:
+  # how often watchdogs checks (seconds):
+  "interval": 57
+  # allow no writes to watchdog device before rebooting (seconds):
+  "watchdog-timeout": 120
+
+  # allow errors to persist before rebooting (seconds)
+  "retry-timeout": 300
+
+  # yes, load can (legitimately) be *very* high
+  # under e.g., a lot of memory/swap pressure – use liberal defaults
+  "max-load-1": "{{ ansible_processor_vcpus * 32 }}"
+  "max-load-5": "{{ ansible_processor_vcpus * 16 }}"
+  "max-load-15": "{{ ansible_processor_vcpus * 8 }}"
+
+# Example to extend/override this list (put something like the following
+# in your variables):
+#  hardware_analysis_and_monitoring_packages_extra:
+#    "my-favorite-hw-package": present
+#    "my-hated-hw-package": absent
+hardware_analysis_and_monitoring_packages:
+  ethtool:        present
+  hdparm:         present
+  smartmontools:  present

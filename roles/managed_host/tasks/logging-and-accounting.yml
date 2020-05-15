@@ -1,0 +1,92 @@
+- name: install packages for basic logging functionality
+  package: name="{{ item }}"
+  with_items:
+    - rsyslog
+    - logrotate
+
+- name: "{{ 'install' if use_logcheck else 'uninstall' }} logcheck"
+  apt:
+    package: "{{ item }}"
+    state: "{{ 'present' if use_logcheck else 'absent'}}"
+  with_items:
+    - logcheck
+    - logcheck-database
+
+- name: do not use FQDN in subject of logcheck emails
+  lineinfile: line="FQDN=0"
+              regexp="^\s*FQDN\s*=.*"
+              dest="/etc/logcheck/logcheck.conf"
+  when: use_logcheck
+
+- name: symlinking extra ignore configurations for logcheck
+  register: symlink_logcheck_ignore_files
+  shell: 'ln -vsf /opt/admintools/etc/logcheck/ignore.d.{{item}}/* /etc/logcheck/ignore.d.{{item}}'
+  args:
+    # Ansible complains we should use the file module. However, we use a
+    # shell glob above, so using the file module would be cumbersome.
+    # However, feel very free to enhance this.
+    warn: no
+
+  failed_when: symlink_logcheck_ignore_files.rc != 0
+  with_items:
+     - server
+  when: use_logcheck
+
+- name: remove broken symlinks from logcheck's configuration
+  shell: find /etc/logcheck -xtype l -delete
+  when: use_logcheck
+
+
+
+- name: work around a permission bug for systemd in LXC (Launchpad #1582394)
+  lineinfile:
+    dest: /etc/logcheck/ignore.d.server/systemd_in_lxc-extra
+    line: '^\w{3} [ :[:digit:]]{11} [._[:alnum:]-]+ systemd\[[[:digit:]]+\]:( [\\._[:alnum:]/-]+:)? Failed to reset devices\.list( on [\\._[:alnum:]/-]+)?: Operation not permitted$'
+    create: yes
+    mode: 0644
+    # only one line in the file:
+    regexp: ".*"
+  when: ansible_virtualization_type == "lxc"
+
+
+
+# We "abuse" the ``compresscmd`` to apply a global "filter" to the log
+# files once they get "compressed"
+- name: anonymize logs (instead of compressing them)
+  lineinfile:
+    dest: /etc/logrotate.d/000-anonymize-before-compression
+    line: '{{ item.key }} {{ item.value }}'
+    regexp: '^\s*#*\s*{{ item.key }}(\s+|$)'
+    create: yes
+  with_dict:
+    compress: ""
+    compresscmd: /bin/sh
+    compressoptions: -c '/opt/admintools/scripts/anonymize-log | gzip'
+
+
+- name: install packages for accounting
+  package: name="{{ item }}" state=present
+  with_items:
+    - acct
+    - sysstat
+  when: use_process_accounting
+
+- name: uninstall packages for accounting
+  package: name="{{ item }}" state=absent
+  with_items:
+    - acct
+    - sysstat
+  when: not use_process_accounting
+
+- name: enable accounting services
+  service: name="{{ item }}" enabled=yes state=started
+  with_items:
+    - acct
+    - sysstat
+  when: use_process_accounting
+
+- name: enable sysstat in it's configuration file
+  lineinfile: dest=/etc/default/sysstat
+              line='ENABLED="true"'
+              regexp='^ENABLED\s*=.*'
+  when: use_process_accounting

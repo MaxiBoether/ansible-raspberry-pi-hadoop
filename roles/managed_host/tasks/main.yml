@@ -1,0 +1,57 @@
+# includes that to not alter the system can be made conditional here
+# (otherwise, we might have to undo stuff when variables change)
+
+# keep installing admintools the first thinng to do
+
+- import_tasks: git-install.yml
+  become: yes
+
+- import_tasks: admintools.yml
+  become: yes
+# before installing new packages, upgrade:
+- import_tasks: apt-upgrade.yml
+  become: yes
+- import_tasks: git-config.yml
+  become: yes
+- import_tasks: apt-tools.yml
+  become: yes
+- import_tasks: editor.yml
+  become: yes
+- import_tasks: shell.yml
+  become: yes
+- import_tasks: interactive-monitors.yml
+  become: yes
+- import_tasks: system-information.yml
+  become: yes
+- import_tasks: net-utils.yml
+  become: yes
+- import_tasks: umask.yml
+  become: yes
+- import_tasks: haveged.yml
+  become: yes
+- import_tasks: ssh_hardening.yml
+  tags: [ssh_hardening]
+  become: yes
+
+
+- import_tasks: scheduling_and_detaching.yml
+  become: yes
+- import_tasks: logging-and-accounting.yml
+  become: yes
+- import_tasks: hostname_and_lookups.yml
+  become: yes
+- import_tasks: certbot.yml
+  become: yes
+- import_tasks: accounts-hardening.yml
+  become: yes
+- import_tasks: file-system-maintenance.yml
+  become: yes
+- import_tasks: service_priorities.yml
+  become: yes
+- name: check if this the remote machine runs Armbian
+  stat: path=/etc/armbian.txt
+  register: stat_armbian_txt_stat_result
+  become: yes
+- import_tasks: armbian.yml
+  when: stat_armbian_txt_stat_result.stat.exists
+  become: yes

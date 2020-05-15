@@ -1,0 +1,29 @@
+---
+- hosts: master
+  tasks:
+    - name: do network configuration first, in order to have internet on all machines
+      include: roles/raspberry_master/tasks/networking.yml
+      become: yes
+  handlers:
+    - include: roles/raspberry_master/handlers/main.yml
+
+- hosts: all
+  gather_facts: yes
+  roles:
+    - raspberry_compute # change to raspberry_docker if you need docker
+  vars:
+    docker__users: ["pi", "root"]
+    docker__state: "present"
+
+- hosts: all
+  tasks:
+    - name: after all targets are reachable, add them to /etc/hosts
+      include: roles/raspberry_compute/tasks/add_hosts_to_inventory.yml
+
+- hosts: master
+  roles:
+    - raspberry_master # setup of cluster master
+
+- hosts: all
+  roles:
+    - raspberry_node # setup of hadoop nodes

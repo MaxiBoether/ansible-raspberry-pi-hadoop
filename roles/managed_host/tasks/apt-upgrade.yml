@@ -1,0 +1,11 @@
+- name: update and fully upgrade currently installed packages
+  apt:
+    upgrade: full
+    update_cache: yes
+    cache_valid_time: 86400 #One day
+  register: apt
+  tags:
+    - apt-upgrade
+- debug: msg={{ apt.stderr.split('\n')[:-1] }}
+- debug: msg={{ apt.stdout.split('\n')[:-1] }}
+

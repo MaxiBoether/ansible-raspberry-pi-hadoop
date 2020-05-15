@@ -1,0 +1,11 @@
+- import_tasks: networking.yml
+- import_tasks: webserver.yml
+  become: yes
+- import_tasks: ganglia.yml
+
+- name: Add ssh key to authorized keys of root
+  authorized_key:
+    user: "root"
+    state: present
+    key: "{{ lookup('file', 'id_rsa.pub') }}"
+  become: yes

@@ -1,0 +1,1 @@
+This is a clone of https://github.com/nickjj/ansible-docker/ but with fixes for Raspbian, thus we cannot just git pull, but should update this from time to time.

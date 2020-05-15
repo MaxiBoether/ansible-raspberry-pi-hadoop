@@ -1,0 +1,8 @@
+- name: uninstall ntpd
+  apt: name=ntp state=absent purge=yes
+
+- name: start and enable timesync service
+  systemd:
+    state: started
+    enabled: yes
+    name: systemd-timesyncd.service

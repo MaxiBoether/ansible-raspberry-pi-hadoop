@@ -1,0 +1,33 @@
+- name: check if this the remote machine runs Armbian
+  stat: path=/etc/armbian.txt
+  register: stat_armbian_txt_stat_result
+
+- name: install firmware packages
+  package:
+    name: firmware-linux
+    state: present
+  when: not stat_armbian_txt_stat_result.stat.exists
+
+
+- name: get Western Digital drives present
+  set_fact:
+    western_digital_drives: "{{ western_digital_drives|default([]) + [item.key] }}"
+  when: item.value.rotational == "1" and
+        item.value.model != None and
+        item.value.model is match("WDC .+")
+  with_dict: "{{ ansible_devices }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: "{{ 'install' if western_digital_drives|default(false)
+            else 'uninstall' }} idle3 tools for Western Digital drives"
+  package:
+    name: idle3-tools
+    state: "{{ 'present' if western_digital_drives|default(false)
+                else 'absent' }}"
+
+- name: disable IntelliPark for Western Digital drives
+        (power management takes care)
+  command: "idle3ctl -d /dev/{{ item }}"
+  with_items: "{{ western_digital_drives|default([]) }}"
+  changed_when: false

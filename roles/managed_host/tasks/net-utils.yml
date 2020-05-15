@@ -1,0 +1,5 @@
+- name: install network related tools
+  package: name="{{ item }}"
+  with_items:
+    - iputils-ping
+    - wget

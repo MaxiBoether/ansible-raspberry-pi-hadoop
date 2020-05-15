@@ -1,0 +1,57 @@
+<configuration>
+    <property>
+            <name>yarn.acl.enable</name>
+            <value>0</value>
+    </property>
+
+    <property>
+            <name>yarn.resourcemanager.hostname</name>
+            <value>node01</value>
+    </property>
+    <property>
+            <name>yarn.nodemanager.aux-services</name>
+            <value>mapreduce_shuffle</value>
+    </property>
+
+    <property>
+            <name>yarn.nodemanager.resource.memory-mb</name>
+            <value>{{ yarnmaximummemory }}</value>
+    </property>
+
+    <property>
+            <name>yarn.scheduler.maximum-allocation-mb</name>
+            <value>{{ yarnmaximummemory }}</value>
+    </property>
+
+        <property>
+                <name>yarn.nodemanager.vmem-check-enabled</name>
+                <value>false</value>
+        </property>
+
+    <property>
+            <name>yarn.scheduler.minimum-allocation-mb</name>
+            <value>{{ yarnminimummemory }}</value>
+    </property>
+  <property>
+    <description>Where to aggregate logs</description>
+    <name>yarn.nodemanager.remote-app-log-dir</name>
+    <value>hdfs://node01:8020/var/log/hadoop-yarn/apps</value>
+  </property>
+        <property>
+                <name>yarn.resourcemanager.bind-host</name>
+                <value>0.0.0.0</value>
+        </property>
+        <property>
+                <name>yarn.nodemanager.bind-host</name>
+                <value>0.0.0.0</value>
+        </property>
+        <property>
+                <name>yarn.timeline-service.bind-host</name>
+                <value>0.0.0.0</value>
+        </property>
+        <property>
+                <name>yarn.log-aggregation-enable</name>
+                <value>true</value>
+        </property>
+
+</configuration>

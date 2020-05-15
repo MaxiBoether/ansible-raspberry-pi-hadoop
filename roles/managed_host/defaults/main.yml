@@ -1,0 +1,190 @@
+tmp_hardening_report_file: /root/tmp_hardening_report.txt
+rkhunter_version: 1.4.4
+
+# optionally, define nameservers
+nameservers: []
+
+use_logcheck: yes
+use_haveged: yes
+do_email_send_test: yes
+create_reports: yes
+use_process_accounting: yes
+hide_processes_between_users: yes
+
+# Settings for password aging (will be applied for all existing accounts!)
+# * Maximum number of days a password may be used.
+# * Maximum number of days a password may be used.
+# * Number of days warning given before a password expires.
+# Disabled by default. See also man login.defs
+pass_max_days: -1
+pass_min_days: -1
+pass_warn_age: 30
+
+
+# email root if a disk mounted from /dev/… fills above this percentage,
+# negative values will disable the check
+disk_space_alert_percentage: 95
+
+apt_tools:
+  # maps package name to it's desired state,
+  # use apt_tools_extra just like postfix_extra_options to customize
+  # the configuration in a Playbook
+
+  apticron: present
+  needrestart: present
+  debsums: present
+  deborphan: present
+
+  # annoyingly expensive maintenance cron jobs (i..e., build search,
+  # index, but we search packages on remote systems very seldom)
+  apt-xapian-index: absent
+
+  # obsolete due to availability of http://httpredir.debian.org/
+  netselect-apt: absent
+
+########################################################################
+# ssh
+#
+
+ssh_client_and_server_extra_macs: []
+ssh_client_and_server_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+  - umac-128-etm@openssh.com
+
+  # enable only if you have to (since no encrypt-then-mac (ETM)):
+  #- hmac-sha2-512
+  #- hmac-sha2-256
+
+ssh_client_and_server_extra_kex: []
+ssh_client_and_server_kex:
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group-exchange-sha256
+
+ssh_client_and_server_extra_ciphers: []
+ssh_client_and_server_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+  - aes256-ctr
+  - aes192-ctr
+  - aes128-ctr
+
+ssh_server_extra_host_keys: []
+
+ssh_client_and_server_extra_options: {}
+ssh_client_and_server_options:
+
+  # reduce risk of BREACH exploit
+  Compression: "no"
+
+  # reduce risk of TCP spoofing attacks
+  TCPKeepAlive: "no"
+
+  Ciphers: "{{ (
+    ssh_client_and_server_ciphers + ssh_client_and_server_extra_ciphers
+  ) | join(',')}}"
+
+  KexAlgorithms: "{{ (
+    ssh_client_and_server_kex + ssh_client_and_server_extra_kex
+  ) | join(',')}}"
+
+  MACs: "{{ (
+    ssh_client_and_server_macs + ssh_client_and_server_extra_macs
+  ) | join(',')}}"
+
+ssh_server_extra_options: {}
+ssh_server_options:
+
+  # increase logging verbosity
+  LogLevel: VERBOSE
+  SyslogFacility: AUTH
+
+  # ``inet``, ``inet6`` or ``any``
+  AddressFamily: any
+
+  # no DNS reverse lookups for connecting hosts (unnecessary & laggy)
+  UseDNS: "no"
+
+  # reduce risk of users bypassing firewalls
+  AllowTcpForwarding: "no"
+
+  # reduce risk of compromised machines re-using client's ssh agents
+  AllowAgentForwarding: "no"
+
+  # reduce risk of unwanted X11 forwardings/"leaking displays"
+  X11Forwarding: "no"
+
+  # bind the X11 forwarding server to the loopback address
+  # (see man sshd_config)
+  X11UseLocalhost: "yes"
+
+  MaxAuthTries: 5
+
+  # this is the maximum number of multiplexed sessions per connection
+  # (however, there can be multiple connections)
+  MaxSessions: 3
+
+  # do not read user's ~/.rhosts and ~/.shosts files
+  IgnoreRhosts: "yes"
+
+  HostbasedAuthentication: "no"
+
+  PermitRootLogin: without-password
+
+  # turn off authentication mechanisms we do not need to minimize attach
+  # surface
+  ChallengeResponseAuthentication: "no"
+  #PasswordAuthentication: "no"
+  KerberosAuthentication: "no"
+  GSSAPIAuthentication: "no"
+
+  # enable display of a login banner
+  Banner: /etc/issue.net
+
+  DebianBanner: "no"
+
+  # enable display of last login upon login
+  PrintLastLog: "yes"
+
+  # close sessions after this many unanswered alive messages
+  ClientAliveCountMax: 10
+
+  # seconds after which unanswered alive message time out
+  ClientAliveInterval: 60
+
+  # check modes of files strictly
+  StrictModes: "yes"
+
+  "Subsystem sftp": internal-sftp
+
+ssh_server_needs_ecdsa_host_key: no
+
+ssh_client_extra_options: {}
+ssh_client_options:
+  ForwardAgent: "no"
+  ForwardX11: "no"
+  UseRoaming: "no"
+  CheckHostIP: "yes"
+  StrictHostKeyChecking: "ask"
+  GSSAPIAuthentication: "no"
+  GSSAPIDelegateCredentials: "no"
+  PermitLocalCommand: "no"
+
+ssh_client_and_server_deprecated_options:
+  - RSAAuthentication
+  - KeyRegenerationInterval
+  - RhostsRSAAuthentication
+  - ServerKeyBits
+  - Protocol
+  - UseLogin
+  - UsePrivilegeSeparation
+
+extra_service_priorities: {}
+service_priorities:
+  ssh: -5
+  openntpd: 2
+  smartd: 2
+  lxc: 4
+  atd: 6
+  cron: 8

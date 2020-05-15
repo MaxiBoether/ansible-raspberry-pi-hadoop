@@ -1,0 +1,51 @@
+- name: install librrd4
+  apt:
+    deb: http://security.debian.org/debian-security/pool/updates/main/r/rrdtool/librrd4_1.4.8-1.2+deb8u2_armhf.deb
+    state: present
+
+- name: install old version of rrdtool
+  apt:
+    deb: https://launchpad.net/ubuntu/+source/rrdtool/1.4.7-1/+build/3368214/+files/rrdtool_1.4.7-1_armhf.deb
+    state: present
+
+- name: install ganglia
+  apt:
+    name: ganglia-monitor
+    state: fixed
+
+- name: replace gmond.conf
+  copy:
+    src: /opt/admintools/etc/ganglia/gmond.conf
+    dest: /etc/ganglia/gmond.conf
+    owner: root
+    mode: '0644'
+    remote_src: true
+    backup: true
+
+- name: replace clustername in gmond.conf
+  replace:
+    dest: /etc/ganglia/gmond.conf
+    regexp: '^(.*)clustername(.*)$'
+    replace: 'name = "CluPi"'
+
+- name: replace masterip in gmond.conf
+  replace:
+    dest: /etc/ganglia/gmond.conf
+    regexp: '^(.*)masterip(.*)$'
+    replace: 'host = node01'
+
+- name: set send metadata interval
+  replace:
+    path: /etc/ganglia/gmond.conf
+    regexp: '^(.*)send_metadata_interval(.*)$'
+    replace: send_metadata_interval = 15
+
+- name: enable ganglia-monitor
+  systemd:
+    name: ganglia-monitor
+    enabled: yes
+
+- name: restart ganglia-monitor
+  service:
+    name: ganglia-monitor
+    state: restarted

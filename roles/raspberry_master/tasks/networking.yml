@@ -1,0 +1,43 @@
+- name: enable packet forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+- name: install iptables
+  apt:
+    name: iptables
+- name: install iptables-persistent
+  apt:
+    name: iptables-persistent
+- name: setup NAT
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ raspiconfig.usbinterface }}"
+    jump: MASQUERADE
+  become: yes
+  notify:
+    - persist iptables
+- name: setup forwarding external -> cluster
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ raspiconfig.usbinterface }}"
+    out_interface: eth0
+    ctstate:
+      - RELATED
+      - ESTABLISHED
+    jump: ACCEPT
+  become: yes
+  notify:
+    - persist iptables
+- name: setup forwarding cluster -> external
+  iptables:
+    chain: FORWARD
+    in_interface: eth0
+    out_interface: "{{ raspiconfig.usbinterface }}"
+    jump: ACCEPT
+  become: yes
+  notify:
+    - persist iptables

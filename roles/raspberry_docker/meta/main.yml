@@ -1,0 +1,3 @@
+---
+dependencies:
+ - { role: raspberry_compute }

@@ -1,0 +1,16 @@
+- stat:
+    path: "{{ hadoop_install_dir }}"
+  register: hadoop_installed
+  become: yes
+
+- name: Add ssh key to authorized keys of root
+  authorized_key:
+    user: "root"
+    state: present
+    key: "{{ lookup('file', raspiconfig.ssh_key_filename+'.pub') }}"
+  become: yes
+
+- import_tasks: jdk.yml
+- import_tasks: hadoop.yml
+  become: true
+  when: not hadoop_installed.stat.exists

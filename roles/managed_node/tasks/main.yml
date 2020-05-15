@@ -1,0 +1,10 @@
+- import_tasks: utils.yml
+  become: yes
+- import_tasks: hardening.yml
+  become: yes
+- import_tasks: sysctl.yml
+  become: yes
+- import_tasks: for-devices.yml
+  become: yes
+- import_tasks: watchdog.yml
+  become: yes

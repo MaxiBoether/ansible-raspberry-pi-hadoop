@@ -1,0 +1,47 @@
+- name: remove secure_path from sudoers file to run hadoop via sudo (note that this is not recommended for a public installation and dangerous)
+  lineinfile:
+    path: /etc/sudoers
+    state: absent
+    regexp: '^%secure_path'
+  become: yes
+
+- import_tasks: resize_filesystem.yml
+  become: yes
+- import_tasks: reboot_on_firstrun.yml
+  become: yes
+- import_tasks: set_timezone.yml
+  become: yes
+- import_tasks: set_ssh_key.yml
+  become: yes
+- import_tasks: set_hostname.yml
+  become: yes
+- import_tasks: add_hosts_to_inventory.yml
+  become: yes
+- import_tasks: monitoring.yml
+  become: yes
+- import_tasks: python.yml
+
+- stat:
+    path: "/opt/gcc9.2"
+  register: gcc_installed
+  become: yes
+- import_tasks: gcc.yml
+  when: not gcc_installed.stat.exists
+
+- name: set zshrc PATH
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export PATH=/sbin:/usr/sbin:$PATH
+    create: yes
+  become: yes
+
+- name: install clustershell and other needed tools for TPCx-HS
+  apt:
+    name:
+    - clustershell
+    - ntpstat
+    - dmidecode
+  become: yes
+
+- import_tasks: time.yml
+  become: yes

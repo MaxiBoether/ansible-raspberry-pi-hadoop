@@ -1,0 +1,5 @@
+raspiconfig:
+  sshkey: "ssh-rsa enter-your-key-here"
+  usbinterface: "eth1"
+  timezone: "Europe/Berlin"
+  ssh_key_filename: "id_rsa"

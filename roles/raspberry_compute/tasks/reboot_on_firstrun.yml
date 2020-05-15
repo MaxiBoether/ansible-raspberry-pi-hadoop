@@ -1,0 +1,22 @@
+# raspi-config either automatically resized the filesystem or we did it
+# also, the managed_node/hosts maybe led to a kernel upgrade
+# so at least on the initial setup, we want to reboot
+
+- name: check if dump exists
+  stat: 
+    path: /.clustersetup_firstrun
+  register: firstrun
+
+- name: reboot if it doesn't exist
+  reboot:
+  when: firstrun.stat.exists == false
+
+- name: create file (if not exists)
+  become: true
+  copy:
+    content: ""
+    dest: /.clustersetup_firstrun
+    force: no
+    group: sys
+    owner: root
+    mode: 0555

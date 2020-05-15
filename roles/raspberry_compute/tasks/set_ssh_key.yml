@@ -1,0 +1,4 @@
+- name: set pi's ssh key
+  authorized_key:
+    user: "pi"
+    key: "{{ raspiconfig.sshkey }}"

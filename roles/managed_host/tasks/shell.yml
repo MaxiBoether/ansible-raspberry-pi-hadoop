@@ -1,0 +1,36 @@
+- name: install zsh
+  package: name=zsh state=present
+
+- stat: path=/etc/zsh/zshrc
+  register: conf_stat
+
+- name: backup and remove zsh configuration
+  command: "mv /etc/zsh/zshrc
+               /etc/zsh/zshrc.BAK_ansible_{{ ansible_date_time.iso8601 }}"
+  when: conf_stat.stat.islnk is defined and conf_stat.stat.islnk == False
+
+- name: provide system wide zsh configuration
+  file: src=/opt/admintools/etc/zsh/zshrc
+        dest=/etc/zsh/zshrc
+        state=link
+
+- name: make zsh the default shell for new users (adduser)
+  lineinfile: dest=/etc/adduser.conf
+              regexp='^DSHELL='
+              line='DSHELL=/usr/bin/zsh'
+              state=present
+
+- name: make zsh the default shell for new users (useradd)
+  lineinfile: dest=/etc/default/useradd
+              regexp='^SHELL='
+              line='SHELL=/usr/bin/zsh'
+              state=present
+
+- name: set zsh as shell for non-root user
+  user:
+    name: '{{ ansible_env.SUDO_USER|default(ansible_user_id) }}'
+    shell: /usr/bin/zsh
+  when: ansible_env.SUDO_USER|default(ansible_user_id) != "root"
+
+- name: set zsh as shell for root
+  user: name=root shell=/usr/bin/zsh

@@ -1,0 +1,41 @@
+- name: install apache
+  apt: 
+    name: apache2
+- name: install php
+  apt: 
+    name: 
+      - php 
+      - php-mbstring
+      - php-curl
+- name: install libapache2-mod-php
+  apt: 
+    name: libapache2-mod-php
+- name: check if Apache2 configuration tool is installed
+  register: apache2_installed_check
+  shell: type a2enconf
+  changed_when: false
+  failed_when: false
+
+- name: add configuration files for Apache2
+  file: src="/opt/admintools/etc/apache2/{{ item }}"
+        dest="/etc/apache2/conf-available/{{ item }}"
+        state=link force=yes
+  with_items:
+    - 10-basic-hardening.conf
+    - 20-httpoxy.conf
+  when: apache2_installed_check.rc == 0
+
+- name: enable configurations for Apache2
+  register: a2enconf_result
+  command: a2enconf "{{ item }}"
+  with_items:
+    - 10-basic-hardening.conf
+    - 20-httpoxy.conf
+  notify: restart apache2
+  changed_when: '"Enabling conf" in a2enconf_result.stdout'
+  when: apache2_installed_check.rc == 0
+  
+- name: fix permissions for apache2ctl
+  file:
+    path: /usr/sbin/apache2ctl
+    mode: '0755'

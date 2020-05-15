@@ -1,0 +1,26 @@
+- name: install jdk8
+  apt:
+    name:
+    -  openjdk-8-jdk
+  become: yes
+
+- name: set java_home .bashrc of pi
+  lineinfile:
+    path: /home/pi/.bashrc
+    line: export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-armhf/jre
+    create: yes
+  become: pi
+
+- name: set java_home .bashrc of root
+  lineinfile:
+    path: ~/.bashrc
+    line: export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-armhf/jre
+    create: yes
+  become: yes
+
+- name: set java_home zshrc
+  lineinfile:
+    path: /etc/zsh/zshrc
+    line: export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-armhf/jre
+    create: yes
+  become: yes

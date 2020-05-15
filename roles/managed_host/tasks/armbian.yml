@@ -1,0 +1,12 @@
+- name: force network interface to 100Mbps since 1Gps appears not to
+        work (on Armbian)
+  lineinfile: dest="/etc/rc.local"
+              line="ethtool -s {{ item }} autoneg off speed 100 duplex full"
+              insertbefore="exit 0"
+  with_items: "{{ ansible_interfaces }}"
+  when: item is match("eth.+")
+
+- name: increase boot verbosity
+  lineinfile: dest="/boot/armbianEnv.txt"
+              line="verbosity=7"
+              regexp="verbosity=.+"
